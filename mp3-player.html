@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MP3 Player</title>
+<style>
+  :root { color-scheme: dark; --bg: #0b0c0e; --text: #d9d6cf; --muted: #7d7b76; --accent: #b5532f; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+    font-family: Helvetica, Arial, sans-serif; display: flex;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .player { width: 100%; max-width: 420px; text-align: center; }
+  h1 { font-family: Georgia, serif; font-weight: normal; font-size: 22px; margin: 0 0 8px; word-break: break-word; }
+  .status { color: var(--muted); font-size: 13px; margin-bottom: 24px; min-height: 16px; }
+  .controls { display: flex; justify-content: center; gap: 16px; margin-bottom: 24px; }
+  button {
+    background: none; border: 1px solid var(--muted); color: var(--text);
+    padding: 10px 18px; font-size: 15px; border-radius: 4px; cursor: pointer;
+  }
+  button.primary { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .times { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .file { margin-top: 32px; }
+  .file label {
+    display: inline-block; border: 1px dashed var(--muted); padding: 14px 18px;
+    color: var(--muted); cursor: pointer; border-radius: 4px; font-size: 14px;
+  }
+  .file input { display: none; }
+</style>
+</head>
+<body>
+<div class="player">
+  <h1 id="title">No track loaded</h1>
+  <div class="status" id="status">Choose an MP3 file to begin</div>
+
+  <div class="controls">
+    <button id="back" disabled>-10s</button>
+    <button id="play" class="primary" disabled>Play</button>
+    <button id="forward" disabled>+10s</button>
+  </div>
+
+  <input type="range" id="seek" min="0" max="0" value="0" step="0.1" disabled>
+  <div class="times"><span id="current">0:00</span><span id="duration">0:00</span></div>
+
+  <div class="file">
+    <label>
+      Open MP3
+      <input type="file" id="file" accept="audio/mpeg,audio/mp3,.mp3">
+    </label>
+  </div>
+</div>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script>
+  const audio = document.getElementById("audio");
+  const playBtn = document.getElementById("play");
+  const backBtn = document.getElementById("back");
+  const fwdBtn = document.getElementById("forward");
+  const seek = document.getElementById("seek");
+  const titleEl = document.getElementById("title");
+  const statusEl = document.getElementById("status");
+  const currentEl = document.getElementById("current");
+  const durationEl = document.getElementById("duration");
+  let objectUrl = null;
+
+  function fmt(s) {
+    if (!isFinite(s)) return "0:00";
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60).toString().padStart(2, "0");
+    return m + ":" + sec;
+  }
+
+  document.getElementById("file").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    audio.src = objectUrl;
+    titleEl.textContent = file.name.replace(/\.mp3$/i, "");
+    statusEl.textContent = "Loading...";
+  });
+
+  audio.addEventListener("loadedmetadata", () => {
+    seek.max = audio.duration;
+    seek.disabled = false;
+    playBtn.disabled = false;
+    backBtn.disabled = false;
+    fwdBtn.disabled = false;
+    durationEl.textContent = fmt(audio.duration);
+    statusEl.textContent = "Ready";
+  });
+
+  audio.addEventListener("timeupdate", () => {
+    seek.value = audio.currentTime;
+    currentEl.textContent = fmt(audio.currentTime);
+  });
+
+  audio.addEventListener("play", () => { playBtn.textContent = "Pause"; statusEl.textContent = "Playing"; });
+  audio.addEventListener("pause", () => { playBtn.textContent = "Play"; statusEl.textContent = "Paused"; });
+  audio.addEventListener("ended", () => { playBtn.textContent = "Play"; statusEl.textContent = "Finished"; });
+
+  playBtn.addEventListener("click", () => {
+    if (audio.paused) audio.play(); else audio.pause();
+  });
+  backBtn.addEventListener("click", () => { audio.currentTime = Math.max(0, audio.currentTime - 10); });
+  fwdBtn.addEventListener("click", () => { audio.currentTime = Math.min(audio.duration, audio.currentTime + 10); });
+  seek.addEventListener("input", () => { audio.currentTime = seek.value; });
+</script>
+</body>
+</html>
